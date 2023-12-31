@@ -25,7 +25,7 @@ def extract_text(html, sel):
         return None
 
 def parse_page(html):
-    products = html.css("li.VcGDfKky_dvNbxUqmZ9K")
+    products = html.css("li.VcGDfKKy_dvNbxUqm29K")
     for product in products:
         item = {
            "name": extract_text(product, "span[data-ui='product-title']"),
