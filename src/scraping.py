@@ -40,10 +40,17 @@ def main():
         print(f"Gathering page: {x}")
         html = get_html(baseurl, x)
         if html is False:
+            # If getting HTML fails, log an error message and break from the loop to stop further processing
+            print(f'Error occurred when fetching page {x}. Stopping the scraping process.')
             break
         data = parse_page(html)
-        for item in data:
-            print(item)
+        # Open a file in append mode to save the product details
+        with open('product_details.txt', 'a') as file:
+            for item in data:
+                # Writing product details to the file
+                file.write(f'{item}\n')
+
+        # Delay between requests to avoid overloading the server
         time.sleep(1)
 
 if __name__ == "__main__":
