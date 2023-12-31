@@ -4,9 +4,12 @@ import time
 
 def get_html(baseurl, page):
     headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0"
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:10.0) Gecko/20100101 Firefox/111.0"
     }
     resp = httpx.get(baseurl + str(page), headers=headers, follow_redirects=True)
+    if resp.text == '':
+        print(f"Blank response for {resp.url}.")
+        return False
     try:
 
         resp.raise_for_status()
