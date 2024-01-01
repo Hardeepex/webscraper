@@ -6,6 +6,7 @@ from src.url_manager import URLManager
 from src.rate_limiter import RateLimiter
 from src.error_handler import ErrorHandler
 from src.db_manager import DBManager
+from src.selenium_grid import get_webdriver
 
 def get_html(url_manager, rate_limiter, error_handler):
     while True:
@@ -17,12 +18,22 @@ def get_html(url_manager, rate_limiter, error_handler):
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:10.0) Gecko/20100101 Firefox/111.0"
         }
         try:
-            resp = httpx.get(url, headers=headers, follow_redirects=True)
-            if resp.text == '':
-                print(f"Blank response for {resp.url}.")
+            driver = get_webdriver()
+            driver.get(url)
+            if driver.page_source.strip() == '':
+                print(f"Blank response for {url}.")
+                driver.quit()
                 continue
-            resp.raise_for_status()
-            return HTMLParser(resp.text)
+            # WebDriver does not have a raise_for_status() method
+            # Instead, check for a valid page_source length.
+            if len(driver.page_source.strip()) > 0:
+                html_content = HTMLParser(driver.page_source)
+                driver.quit()
+                return html_content
+            else:
+                # Handle the case where the page source is empty/invalid
+                error_handler.handle_error(ValueError('The page source is invalid or empty.'))
+                driver.quit()
         except httpx.HTTPStatusError as exc:
             error_handler.handle_error(exc)
         except Exception as e:
