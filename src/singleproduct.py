@@ -3,11 +3,31 @@ from selectolax.parser import HTMLParser
 
 def extract_text(node, selector):
     try:
-        return node.css_first(selector).text()
+        element = node.css_first(selector)
+        if element is None:
+            return None
+        return element.text()
     except AttributeError:
         return None
 
-url = "https://www.rei.com/c/camping-and-hiking/f/scd-deals"
+from unittest.mock import MagicMock
+
+url = "https://www.rei.com/c/camping-and-hiking/f/scd-deals"  # Original URL, kept for reference in case tests are run in a suitable environment
+# Test for 'extract_text' function
+
+def test_extract_text():
+    mock_node = MagicMock()
+    mock_node.css_first.return_value.text.return_value = "Text Content"
+    assert extract_text(mock_node, "valid_selector") == "Text Content"
+
+    mock_node.css_first.return_value = None
+    assert extract_text(mock_node, "invalid_selector") is None
+
+    mock_node.css_first.side_effect = AttributeError
+    assert extract_text(mock_node, "selector_causing_attribute_error") is None
+    print("All tests passed!")
+
+test_extract_text()
 headers = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:10.0) Gecko/20100101 Firefox/111.0"
 }
