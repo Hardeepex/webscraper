@@ -1,22 +1,32 @@
 import httpx
 from selectolax.parser import HTMLParser
 import time
+from multiprocessing import Process, Queue
+from src.url_manager import URLManager
+from src.rate_limiter import RateLimiter
+from src.error_handler import ErrorHandler
+from src.db_manager import DBManager
 
-def get_html(baseurl, page):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:10.0) Gecko/20100101 Firefox/111.0"
-    }
-    resp = httpx.get(baseurl + str(page), headers=headers, follow_redirects=True)
-    if resp.text == '':
-        print(f"Blank response for {resp.url}.")
-        return False
-    try:
-
-        resp.raise_for_status()
-        return HTMLParser(resp.text)
-    except httpx.HTTPStatusError as exc:
-        print(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}. Page Limit Exceeded")
-        return False
+def get_html(url_manager, rate_limiter, error_handler):
+    while True:
+        url = url_manager.get_next_url()
+        if not url:
+            return None
+        rate_limiter.wait()
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:10.0) Gecko/20100101 Firefox/111.0"
+        }
+        try:
+            resp = httpx.get(url, headers=headers, follow_redirects=True)
+            if resp.text == '':
+                print(f"Blank response for {resp.url}.")
+                continue
+            resp.raise_for_status()
+            return HTMLParser(resp.text)
+        except httpx.HTTPStatusError as exc:
+            error_handler.handle_error(exc)
+        except Exception as e:
+            print(f'An unexpected error occurred: {e}')
 
 def extract_text(html, sel):
     try:
@@ -34,24 +44,30 @@ def parse_page(html):
         }
         yield item
 
-def main():
-    baseurl = "https://www.rei.com/c/camping-and-hiking/f/scd-deals?page="
-    for x in range(1, 100):
-        print(f"Gathering page: {x}")
-        html = get_html(baseurl, x)
-        if html is False:
-            # If getting HTML fails, log an error message and break from the loop to stop further processing
-            print(f'Error occurred when fetching page {x}. Stopping the scraping process.')
-            break
+def scrape_page(url_manager, rate_limiter, error_handler, db_manager):
+    html = get_html(url_manager, rate_limiter, error_handler)
+    if html is not None:
         data = parse_page(html)
-        # Open a file in append mode to save the product details
-        with open('product_details.txt', 'a') as file:
-            for item in data:
-                # Writing product details to the file
-                file.write(f'{item}\n')
+        for item in data:
+            db_manager.insert_data(item)
 
-        # Delay between requests to avoid overloading the server
-        time.sleep(1)
+def main():
+    url_manager = URLManager()
+    for x in range(1, 100):
+        url_manager.add_url(f"https://www.rei.com/c/camping-and-hiking/f/scd-deals?page={x}")
+    rate_limiter = RateLimiter()
+    error_handler = ErrorHandler(max_retries=5, retry_wait_time=1)
+    db_manager = DBManager('products.db')
+    db_manager.create_table()
+    # Initiate multiple processes for scraping
+    process_list = []
+    while url_manager.get_next_url() is not None:
+        process = Process(target=scrape_page, args=(url_manager, rate_limiter, error_handler, db_manager))
+        process.start()
+        process_list.append(process)
+    # Join the processes once they are done
+    for process in process_list:
+        process.join()
 
 if __name__ == "__main__":
     main()
