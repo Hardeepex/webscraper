@@ -1,5 +1,6 @@
 import httpx
 from selectolax.parser import HTMLParser
+from src.selenium_grid import get_webdriver
 import time
 import json
 
@@ -12,9 +13,12 @@ MAX_PAGES = 100
 
 def get_html(url):
     try:
-        response = httpx.get(url, headers=HEADERS, follow_redirects=True)
+        driver = get_webdriver()
+        driver.get(url)
         response.raise_for_status()
-        return HTMLParser(response.text)
+        html_source = HTMLParser(driver.page_source)
+        driver.quit()
+        return html_source
     except httpx.HTTPStatusError as e:
         print(f"HTTP error occurred: {e}")
         return None
