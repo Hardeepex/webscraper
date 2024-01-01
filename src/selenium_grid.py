@@ -5,8 +5,8 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 
 def setup_selenium_grid():
-    subprocess.Popen("java -jar selenium-server-standalone.jar -role hub", shell=True)
-    subprocess.Popen("java -jar selenium-server-standalone.jar -role node  -hub http://localhost:4444/grid/register", shell=True)
+    subprocess.Popen("docker build -t selenium-grid .", shell=True)
+    subprocess.Popen("docker run -d -p 4444:4444 --name selenium-grid selenium-grid", shell=True)
 
 def get_webdriver():
     desired_cap = DesiredCapabilities.CHROME
