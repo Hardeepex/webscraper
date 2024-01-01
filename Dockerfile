@@ -1,4 +1,6 @@
 # Dockerfile
-FROM selenium/standalone-chrome
+FROM --platform=linux/arm64/v8 selenium/standalone-chrome
 
-CMD ["start-selenium-grid.sh"]
+COPY start-selenium-grid.sh /
+
+CMD ["/start-selenium-grid.sh"]
