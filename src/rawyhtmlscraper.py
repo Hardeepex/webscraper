@@ -15,20 +15,51 @@ def get_html(url):
         response = httpx.get(url, headers=HEADERS, follow_redirects=True)
         response.raise_for_status()
         return HTMLParser(response.text)
-    except httpx.HTTPStatusError as e:
+    except httpx.HTTPError as e:
+
+# Test for 'get_html' function
+
+import pytest
+from httpx import Response
+from unittest.mock import patch
+
+def test_get_html_success():
+    with patch('src.singleproduct.httpx.get') as mock_get:
+        mock_get.return_value = Response(200, text="<html></html>")
+        html_parser = get_html('http://example.com')
+        assert type(html_parser) is HTMLParser
+        assert html_parser.text() == "<html></html>"
+
+# Execute the tests
+pytest.main()
         print(f"HTTP error occurred: {e}")
         return None
 
 def parse_page(html):
-    products = html.css("li.product-class")  # Update the selector based on the actual webpage
+    products = html.css("li.product-tile")  # Update the selector based on the actual webpage
     for product in products:
         yield {
-            "name": extract_text(product, "span.product-title-class"),  # Update selector
-            "price": extract_text(product, "span.price-class"),  # Update selector
+            "name": extract_text(product, "h3.product-title > a"),  # Update selector
+            "price": extract_text(product, "div.product-price"),  # Update selector
             "savings": extract_text(product, "div.savings-class")  # Update selector
         }
 
 def extract_text(node, selector):
+
+# Test for 'parse_page' function
+
+def test_parse_page():
+    mock_html = HTMLParser('<ul><li class="product-tile"><h3 class="product-title"><a>Sample Product</a></h3><div class="product-price">$99.99</div><div class="savings-class">Save $20</div></li></ul>')
+    result = list(parse_page(mock_html))
+    assert len(result) == 1
+    assert result[0]['name'] == 'Sample Product'
+    assert result[0]['price'] == '$99.99'
+    assert result[0]['savings'] == 'Save $20'
+
+# Execute the tests
+pytest.main()
+
+# End of test code
     try:
         return node.css_first(selector).text()
     except AttributeError:
